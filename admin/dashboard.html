@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <title>Dashboard | Kavruk Co. Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
+    <link href="assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
+    <link href="assets/css/icons.min.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    <script>
+        if (sessionStorage.getItem('admin_auth') !== 'true') window.location.href = 'login.html';
+    </script>
+    <div class="wrapper">
+        <div class="sidenav-menu">
+            <a href="dashboard.html" class="logo"><span class="logo-light"><h4 class="mt-3 text-white">KAVRUK CO.</h4></span></a>
+            <ul class="side-nav">
+                <li class="side-nav-item"><a href="#" onclick="showTab('urunler')" class="side-nav-link"><i class="ti ti-basket me-2"></i> Ürün Yönetimi</a></li>
+                <li class="side-nav-item"><a href="#" onclick="showTab('mesajlar')" class="side-nav-link"><i class="ti ti-message me-2"></i> Mesajlar</a></li>
+                <li class="side-nav-item"><a href="#" onclick="showTab('ayarlar')" class="side-nav-link"><i class="ti ti-settings me-2"></i> Site Ayarları</a></li>
+                <li class="side-nav-item"><a href="#" onclick="logout()" class="side-nav-link text-danger"><i class="ti ti-logout me-2"></i> Çıkış Yap</a></li>
+            </ul>
+        </div>
+        <div class="page-content p-4">
+            <div id="tab-urunler" class="tab-content">
+                <div class="d-flex justify-content-between mb-4">
+                    <h3>Ürün Yönetimi</h3>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#urunModal">Yeni Ürün Ekle</button>
+                </div>
+                <table class="table card p-3">
+                    <thead><tr><th>Görsel</th><th>İsim</th><th>Kategori</th><th>Fiyat</th><th>İşlem</th></tr></thead>
+                    <tbody id="product-list"></tbody>
+                </table>
+            </div>
+            <div id="tab-mesajlar" class="tab-content d-none">
+                <h3>Gelen Mesajlar</h3>
+                <div id="message-list" class="row mt-3"></div>
+            </div>
+            <div id="tab-ayarlar" class="tab-content d-none">
+                <h3>Site Ayarları</h3>
+                <form id="settings-form" class="card p-4 col-md-6">
+                    <div class="mb-3"><label>Site Başlığı</label><input type="text" id="s_title" class="form-control"></div>
+                    <div class="mb-3"><label>Logo Metni</label><input type="text" id="s_logo" class="form-control"></div>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="urunModal" tabindex="-1">
+        <div class="modal-dialog"><form id="product-form" class="modal-content">
+            <div class="modal-header"><h5>Ürün Detayları</h5></div>
+            <div class="modal-body">
+                <input type="hidden" id="p_id">
+                <div class="mb-3"><label>İsim</label><input type="text" id="p_name" class="form-control" required></div>
+                <div class="mb-3"><label>Fiyat</label><input type="text" id="p_price" class="form-control" required></div>
+                <div class="mb-3"><label>Açıklama</label><textarea id="p_desc" class="form-control"></textarea></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Kaydet</button></div>
+        </form></div>
+    </div>
+
+    <script src="assets/js/vendor.min.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script src="../assets/js/db.js"></script>
+    <script>
+        function showTab(tab) {
+            $('.tab-content').addClass('d-none');
+            $('#tab-' + tab).removeClass('d-none');
+            render();
+        }
+        function render() {
+            const data = db.get();
+            const plist = $('#product-list').empty();
+            data.urunler.forEach(u => {
+                plist.append(`<tr><td><img src="../${u.gorsel}" height="40"></td><td>${u.isim}</td><td>${u.kategori}</td><td>${u.fiyat} TL</td><td><button class="btn btn-sm btn-danger" onclick="deleteProduct(${u.id})">Sil</button></td></tr>`);
+            });
+            const mlist = $('#message-list').empty();
+            data.mesajlar.forEach(m => {
+                mlist.append(`<div class="col-md-4"><div class="card p-3 mb-3"><strong>${m.isim}</strong><br><small>${m.email}</small><hr>${m.mesaj}</div></div>`);
+            });
+            $('#s_title').val(data.ayarlar.site_basligi);
+            $('#s_logo').val(data.ayarlar.logo_metni);
+        }
+        function deleteProduct(id) {
+            const data = db.get();
+            data.urunler = data.urunler.filter(u => u.id !== id);
+            db.save(data);
+            render();
+        }
+        $('#product-form').submit(function(e) {
+            e.preventDefault();
+            const data = db.get();
+            data.urunler.push({
+                id: Date.now(),
+                isim: $('#p_name').val(),
+                fiyat: $('#p_price').val(),
+                aciklama: $('#p_desc').val(),
+                kategori: 'Sıcak Kahveler',
+                gorsel: 'assets/images/home-coffee/menu/menu-img1.jpg'
+            });
+            db.save(data);
+            $('#urunModal').modal('hide');
+            render();
+        });
+        $('#settings-form').submit(function(e) {
+            e.preventDefault();
+            const data = db.get();
+            data.ayarlar.site_basligi = $('#s_title').val();
+            data.ayarlar.logo_metni = $('#s_logo').val();
+            db.save(data);
+            alert('Ayarlar kaydedildi!');
+        });
+        function logout() { sessionStorage.clear(); window.location.href = 'login.html'; }
+        render();
+    </script>
+</body>
+</html>
